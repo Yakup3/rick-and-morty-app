@@ -1,4 +1,4 @@
-import React, {RefObject, useState} from 'react';
+import React, {RefObject, useCallback, useMemo, useState} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {Modalize} from 'react-native-modalize';
 import AntDesign from 'react-native-vector-icons/AntDesign';
@@ -24,20 +24,22 @@ const FilterModalize: React.FC<FilterModalizeProps> = ({
   handleOnClose,
   handleOnFilter,
 }) => {
-  const [selectedStatus, setSelectedStatus] = useState<Status>();
-  const [selectedLocation, setSelectedLocation] = useState<Location>();
+  const [selectedStatus, setSelectedStatus] = useState<Status | undefined>();
+  const [selectedLocation, setSelectedLocation] = useState<
+    Location | undefined
+  >();
 
-  const handleOnClear = () => {
+  const handleOnClear = useCallback(() => {
     setSelectedStatus(undefined);
     setSelectedLocation(undefined);
-  };
+  }, []);
 
-  const handleOnApply = () => {
+  const handleOnApply = useCallback(() => {
     handleOnFilter(selectedStatus, selectedLocation);
     handleOnClose();
-  };
+  }, [handleOnFilter, handleOnClose, selectedStatus, selectedLocation]);
 
-  const renderHeader = () => {
+  const renderHeader = useMemo(() => {
     return (
       <View style={styles.header}>
         <View style={styles.headerLeftContainer}>
@@ -63,41 +65,43 @@ const FilterModalize: React.FC<FilterModalizeProps> = ({
         </View>
       </View>
     );
-  };
+  }, [handleOnClose, handleOnClear, handleOnApply]);
 
-  const renderStatusItem = (item: Status) => {
-    return (
-      <TouchableOpacity
-        style={styles.accordionItemContainer}
-        key={item.value}
-        onPress={() => {
-          setSelectedStatus(item);
-        }}>
-        <List.Item title={item.title} />
-        {selectedStatus?.value === item.value && (
-          <AntDesign name="check" size={24} color={colors.gray.medium} />
-        )}
-      </TouchableOpacity>
-    );
-  };
+  const renderStatusItem = useCallback(
+    (item: Status) => {
+      return (
+        <TouchableOpacity
+          style={styles.accordionItemContainer}
+          key={item.value}
+          onPress={() => setSelectedStatus(item)}>
+          <List.Item title={item.title} />
+          {selectedStatus?.value === item.value && (
+            <AntDesign name="check" size={24} color={colors.gray.medium} />
+          )}
+        </TouchableOpacity>
+      );
+    },
+    [selectedStatus],
+  );
 
-  const renderLocationsItem = (item: Location) => {
-    return (
-      <TouchableOpacity
-        style={styles.accordionItemContainer}
-        key={item.id}
-        onPress={() => {
-          setSelectedLocation(item);
-        }}>
-        <List.Item title={item.name} />
-        {selectedLocation?.url === item.url && (
-          <AntDesign name="check" size={24} color={colors.gray.medium} />
-        )}
-      </TouchableOpacity>
-    );
-  };
+  const renderLocationsItem = useCallback(
+    (item: Location) => {
+      return (
+        <TouchableOpacity
+          style={styles.accordionItemContainer}
+          key={item.id}
+          onPress={() => setSelectedLocation(item)}>
+          <List.Item title={item.name} />
+          {selectedLocation?.url === item.url && (
+            <AntDesign name="check" size={24} color={colors.gray.medium} />
+          )}
+        </TouchableOpacity>
+      );
+    },
+    [selectedLocation],
+  );
 
-  const renderBody = () => {
+  const renderBody = useMemo(() => {
     return (
       <View>
         <List.Accordion
@@ -114,12 +118,18 @@ const FilterModalize: React.FC<FilterModalizeProps> = ({
         </List.Accordion>
       </View>
     );
-  };
+  }, [
+    renderStatusItem,
+    renderLocationsItem,
+    selectedStatus,
+    selectedLocation,
+    locations,
+  ]);
 
   return (
     <Modalize modalStyle={styles.modalStyle} ref={modalizeRef}>
-      {renderHeader()}
-      {renderBody()}
+      {renderHeader}
+      {renderBody}
     </Modalize>
   );
 };
@@ -147,7 +157,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 22,
-    fontWeight: 600,
+    fontWeight: '600',
   },
   accordionItemContainer: {
     flexDirection: 'row',
@@ -157,7 +167,7 @@ const styles = StyleSheet.create({
   },
   accordionTitle: {
     fontSize: 18,
-    fontWeight: 500,
+    fontWeight: '500',
   },
 });
 

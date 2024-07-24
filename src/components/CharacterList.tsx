@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   Text,
   View,
@@ -42,7 +42,7 @@ const CharacterList: React.FC<CharacterListProps> = ({
     }
   }, [status, location]);
 
-  const _fetchCharacter = async () => {
+  const _fetchCharacter = useCallback(async () => {
     try {
       const characterUrls = location?.residents;
 
@@ -51,7 +51,7 @@ const CharacterList: React.FC<CharacterListProps> = ({
       }
 
       const response = await Promise.all(
-        characterUrls?.map((item: string) => fetchCharacter(item)),
+        characterUrls.map((item: string) => fetchCharacter(item)),
       );
 
       const characters: Character[] = response as Character[];
@@ -69,74 +69,80 @@ const CharacterList: React.FC<CharacterListProps> = ({
     } catch (error) {
       console.error('Error fetching character:', error);
     }
-  };
+  }, [location, status]);
 
-  const _fetchCharacters = async (page: number, status: Status | undefined) => {
-    try {
-      if (page === 1) {
-        setLoading(true);
-      } else {
-        setIsLoadingMore(true);
+  const _fetchCharacters = useCallback(
+    async (page: number, status: Status | undefined) => {
+      try {
+        if (page === 1) {
+          setLoading(true);
+        } else {
+          setIsLoadingMore(true);
+        }
+
+        const data = await fetchCharacters(page, status?.value);
+
+        setInfo(data.info);
+        setCharacters(prevCharacters =>
+          page === 1 ? data.results : [...prevCharacters, ...data.results],
+        );
+      } catch (error) {
+        console.error('Error fetching characters:', error);
+      } finally {
+        setLoading(false);
+        setIsLoadingMore(false);
       }
+    },
+    [],
+  );
 
-      const data = await fetchCharacters(page, status?.value);
-
-      setInfo(data.info);
-      setCharacters(prevCharacters =>
-        page === 1 ? data.results : [...prevCharacters, ...data.results],
-      );
-    } catch (error) {
-      console.error('Error fetching characters:', error);
-    } finally {
-      setLoading(false);
-      setIsLoadingMore(false);
-    }
-  };
-
-  const handleLoadMoreCharacters = () => {
+  const handleLoadMoreCharacters = useCallback(() => {
     if (info?.next) {
       setPage(prevPage => prevPage + 1);
       _fetchCharacters(page + 1, status);
     }
-  };
+  }, [info, page, status, _fetchCharacters]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     return status === STATUS[0].title
       ? colors.green
       : status === STATUS[1].title
       ? colors.red
       : colors.gray.medium;
-  };
+  }, []);
 
-  const renderCharacterItem = ({item}: {item: Character}) => (
-    <View style={{...styles.item, borderColor: getStatusColor(item.status)}}>
-      <View style={styles.characterImageContainer}>
-        <Image source={{uri: item.image}} style={styles.characterImage} />
-        <View
-          style={{
-            ...styles.characterStatusContainer,
-            backgroundColor: getStatusColor(item.status),
-          }}>
-          <Text style={styles.characterStatusText}>{item.status}</Text>
+  const renderCharacterItem = useCallback(
+    ({item}: {item: Character}) => (
+      <View style={{...styles.item, borderColor: getStatusColor(item.status)}}>
+        <View style={styles.characterImageContainer}>
+          <Image source={{uri: item.image}} style={styles.characterImage} />
+          <View
+            style={{
+              ...styles.characterStatusContainer,
+              backgroundColor: getStatusColor(item.status),
+            }}>
+            <Text style={styles.characterStatusText}>{item.status}</Text>
+          </View>
+        </View>
+        <View style={styles.characterInfoContainer}>
+          <Text
+            style={styles.characterName}
+            numberOfLines={1}
+            ellipsizeMode="tail">
+            {item.name}
+          </Text>
+          <View>
+            <Text style={styles.locationLabel}>Last known location:</Text>
+            <Text style={styles.characterLocation}>{item.location.name}</Text>
+          </View>
         </View>
       </View>
-      <View style={styles.characterInfoContainer}>
-        <Text
-          style={styles.characterName}
-          numberOfLines={1}
-          ellipsizeMode="tail">
-          {item.name}
-        </Text>
-        <View>
-          <Text style={styles.locationLabel}>Last known location:</Text>
-          <Text style={styles.characterLocation}>{item.location.name}</Text>
-        </View>
-      </View>
-    </View>
+    ),
+    [getStatusColor],
   );
 
-  const renderHeader = () => {
-    return (
+  const renderHeader = useMemo(
+    () => (
       <View style={styles.headerContainer}>
         <Text style={styles.totalCharacterCount}>
           {location
@@ -144,7 +150,7 @@ const CharacterList: React.FC<CharacterListProps> = ({
             : `Total Characters: ${characters.length} / ${info?.count}`}
         </Text>
         <Badge
-          visible={location != undefined || status != undefined}
+          visible={location !== undefined || status !== undefined}
           style={styles.badge}
           size={8}
         />
@@ -155,17 +161,28 @@ const CharacterList: React.FC<CharacterListProps> = ({
           color={colors.text.black}
         />
       </View>
-    );
-  };
-
-  const renderListEmptyComponent = () => (
-    <View style={styles.listEmptyComponent}>
-      <Text style={styles.listEmptyComponentText}>No character found.</Text>
-    </View>
+    ),
+    [
+      filteredCharacters.length,
+      characters.length,
+      info?.count,
+      location,
+      status,
+      handleOnFilterIcon,
+    ],
   );
 
-  const renderFilteredCharacterList = () => {
-    return (
+  const renderListEmptyComponent = useMemo(
+    () => (
+      <View style={styles.listEmptyComponent}>
+        <Text style={styles.listEmptyComponentText}>No character found.</Text>
+      </View>
+    ),
+    [],
+  );
+
+  const renderFilteredCharacterList = useMemo(
+    () => (
       <FlatList
         key={2}
         numColumns={2}
@@ -175,11 +192,12 @@ const CharacterList: React.FC<CharacterListProps> = ({
         keyExtractor={item => item.id.toString()}
         ListEmptyComponent={renderListEmptyComponent}
       />
-    );
-  };
+    ),
+    [filteredCharacters, renderCharacterItem, renderListEmptyComponent],
+  );
 
-  const renderCharacterList = () => {
-    return (
+  const renderCharacterList = useMemo(
+    () => (
       <FlatList
         key={2}
         numColumns={2}
@@ -196,8 +214,15 @@ const CharacterList: React.FC<CharacterListProps> = ({
           )
         }
       />
-    );
-  };
+    ),
+    [
+      characters,
+      handleLoadMoreCharacters,
+      isLoadingMore,
+      renderCharacterItem,
+      renderListEmptyComponent,
+    ],
+  );
 
   if (loading && page === 1) {
     return <ActivityIndicator size="large" color={colors.gray.medium} />;
@@ -205,8 +230,8 @@ const CharacterList: React.FC<CharacterListProps> = ({
 
   return (
     <View style={styles.container}>
-      {renderHeader()}
-      {location ? renderFilteredCharacterList() : renderCharacterList()}
+      {renderHeader}
+      {location ? renderFilteredCharacterList : renderCharacterList}
     </View>
   );
 };
