@@ -1,28 +1,27 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
 import React from 'react';
-import {Text, SafeAreaView, useColorScheme} from 'react-native';
+import {SafeAreaView, StyleSheet} from 'react-native';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 
-import {Colors} from 'react-native/Libraries/NewAppScreen';
+import CharacterList from './src/components/CharacterList';
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    flex: 1,
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+const App: React.FC = () => {
+  const handleOnFilterIcon = () => {
+    console.log('clicked to filter icon');
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <Text>Hello</Text>
+    <SafeAreaView style={styles.container}>
+      <GestureHandlerRootView>
+        <CharacterList handleOnFilterIcon={handleOnFilterIcon} />
+      </GestureHandlerRootView>
     </SafeAreaView>
   );
-}
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
 
 export default App;
