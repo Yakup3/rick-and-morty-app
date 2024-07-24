@@ -12,13 +12,19 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import colors from '../theme/colors';
 import {STATUS} from '../shared/constants';
 import {fetchCharacters} from '../services/api';
-import {Character, Info} from '../services/models';
+import {Character, Info, Location, Status} from '../services/models';
 
 interface CharacterListProps {
+  status: Status | undefined;
+  location: Location | undefined;
   handleOnFilterIcon: () => void;
 }
 
-const CharacterList: React.FC<CharacterListProps> = ({handleOnFilterIcon}) => {
+const CharacterList: React.FC<CharacterListProps> = ({
+  status,
+  location,
+  handleOnFilterIcon,
+}) => {
   const [info, setInfo] = useState<Info>();
   const [loading, setLoading] = useState<boolean>(true);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -26,36 +32,43 @@ const CharacterList: React.FC<CharacterListProps> = ({handleOnFilterIcon}) => {
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
   useEffect(() => {
-    _fetchCharacters(page);
-  }, [page]);
+    setPage(1);
+    _fetchCharacters(1, status);
+  }, [status, location]);
 
-  const _fetchCharacters = async (page: number) => {
-    if (page === 1) {
-      setLoading(true);
-    } else {
-      setIsLoadingMore(true);
+  const _fetchCharacters = async (page: number, status: Status | undefined) => {
+    try {
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      const data = await fetchCharacters(page, status?.value);
+
+      setInfo(data.info);
+      setCharacters(prevCharacters =>
+        page === 1 ? data.results : [...prevCharacters, ...data.results],
+      );
+    } catch (error) {
+      console.error('Error fetching characters:', error);
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
     }
-
-    const data = await fetchCharacters(page);
-
-    setInfo(data.info);
-    setCharacters(prevCharacters =>
-      page === 1 ? data.results : [...prevCharacters, ...data.results],
-    );
-    setLoading(false);
-    setIsLoadingMore(false);
   };
 
   const handleLoadMoreCharacters = () => {
     if (info?.next) {
       setPage(prevPage => prevPage + 1);
+      _fetchCharacters(page + 1, status);
     }
   };
 
   const getStatusColor = (status: string) => {
     return status === STATUS[0].title
       ? colors.green
-      : status === STATUS[0].title
+      : status === STATUS[1].title
       ? colors.red
       : colors.gray.medium;
   };
