@@ -7,11 +7,12 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import {Badge} from 'react-native-paper';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 
 import colors from '../theme/colors';
 import {STATUS} from '../shared/constants';
-import {fetchCharacters} from '../services/api';
+import {fetchCharacter, fetchCharacters} from '../services/api';
 import {Character, Info, Location, Status} from '../services/models';
 
 interface CharacterListProps {
@@ -30,11 +31,45 @@ const CharacterList: React.FC<CharacterListProps> = ({
   const [characters, setCharacters] = useState<Character[]>([]);
   const [page, setPage] = useState<number>(1);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [filteredCharacters, setFilteredCharacters] = useState<Character[]>([]);
 
   useEffect(() => {
     setPage(1);
-    _fetchCharacters(1, status);
+    if (location) {
+      _fetchCharacter();
+    } else {
+      _fetchCharacters(1, status);
+    }
   }, [status, location]);
+
+  const _fetchCharacter = async () => {
+    try {
+      const characterUrls = location?.residents;
+
+      if (!characterUrls) {
+        throw new Error('No residents found in location');
+      }
+
+      const response = await Promise.all(
+        characterUrls?.map((item: string) => fetchCharacter(item)),
+      );
+
+      const characters: Character[] = response as Character[];
+
+      let filteredResponse: Character[];
+      if (status?.title) {
+        filteredResponse = characters.filter(
+          character => character.status === status.title,
+        );
+      } else {
+        filteredResponse = characters;
+      }
+
+      setFilteredCharacters(filteredResponse);
+    } catch (error) {
+      console.error('Error fetching character:', error);
+    }
+  };
 
   const _fetchCharacters = async (page: number, status: Status | undefined) => {
     try {
@@ -104,8 +139,15 @@ const CharacterList: React.FC<CharacterListProps> = ({
     return (
       <View style={styles.headerContainer}>
         <Text style={styles.totalCharacterCount}>
-          Total Characters: {characters.length} / {info?.count}
+          {location
+            ? `Total Characters ${filteredCharacters.length}`
+            : `Total Characters: ${characters.length} / ${info?.count}`}
         </Text>
+        <Badge
+          visible={location != undefined || status != undefined}
+          style={styles.badge}
+          size={8}
+        />
         <AntDesign
           onPress={handleOnFilterIcon}
           name="filter"
@@ -113,6 +155,26 @@ const CharacterList: React.FC<CharacterListProps> = ({
           color={colors.text.black}
         />
       </View>
+    );
+  };
+
+  const renderListEmptyComponent = () => (
+    <View style={styles.listEmptyComponent}>
+      <Text style={styles.listEmptyComponentText}>No character found.</Text>
+    </View>
+  );
+
+  const renderFilteredCharacterList = () => {
+    return (
+      <FlatList
+        key={2}
+        numColumns={2}
+        data={filteredCharacters}
+        renderItem={renderCharacterItem}
+        showsVerticalScrollIndicator={false}
+        keyExtractor={item => item.id.toString()}
+        ListEmptyComponent={renderListEmptyComponent}
+      />
     );
   };
 
@@ -127,6 +189,7 @@ const CharacterList: React.FC<CharacterListProps> = ({
         keyExtractor={item => item.id.toString()}
         onEndReached={handleLoadMoreCharacters}
         onEndReachedThreshold={0.1}
+        ListEmptyComponent={renderListEmptyComponent}
         ListFooterComponent={() =>
           isLoadingMore && (
             <ActivityIndicator animating={true} color={colors.gray.medium} />
@@ -143,7 +206,7 @@ const CharacterList: React.FC<CharacterListProps> = ({
   return (
     <View style={styles.container}>
       {renderHeader()}
-      {renderCharacterList()}
+      {location ? renderFilteredCharacterList() : renderCharacterList()}
     </View>
   );
 };
@@ -163,6 +226,12 @@ const styles = StyleSheet.create({
   totalCharacterCount: {
     fontSize: 20,
     fontWeight: '400',
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: 6,
+    backgroundColor: colors.red,
   },
   item: {
     flex: 1 / 2,
@@ -220,6 +289,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: colors.gray.medium,
+  },
+  listEmptyComponent: {
+    padding: 10,
+    alignSelf: 'center',
+  },
+  listEmptyComponentText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.red,
   },
 });
 

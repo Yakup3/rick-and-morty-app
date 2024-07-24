@@ -2,6 +2,7 @@ export interface Location {
   id: number;
   url: string;
   name: string;
+  residents: string[];
 }
 
 export interface Character {

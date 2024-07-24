@@ -33,6 +33,7 @@ const App: React.FC = () => {
         id: location.id,
         url: location.url,
         name: location.name,
+        residents: location.residents,
       }));
 
       setLocations(allLocations);

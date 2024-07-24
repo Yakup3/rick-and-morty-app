@@ -7,6 +7,15 @@ const api = axios.create({
   baseURL: DEFAULT_BASE_URL,
 });
 
+export const fetchCharacter = async (url: string) => {
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching character from api:', error);
+  }
+};
+
 export const fetchCharacters = async (
   page: number = 1,
   status: string | undefined,
